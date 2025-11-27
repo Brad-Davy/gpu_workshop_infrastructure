@@ -1,0 +1,5 @@
+---
+- name: Reboot required
+  reboot:
+    msg: "Rebooting to load NVIDIA drivers..."
+    reboot_timeout: 600

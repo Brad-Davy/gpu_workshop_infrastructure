@@ -1,0 +1,68 @@
+---
+- name: Create home directory
+  ansible.builtin.file:
+    path: "{{ shared_home_storage }}"
+    state: directory
+    mode: '0777'
+
+- name: Create user and set home directory
+  ansible.builtin.user:
+    name: "{{  item.key }}"
+    home: "{{ shared_home_storage  }}/{{ item.key  }}"
+    move_home: yes
+    create_home: yes
+    shell: /bin/bash
+  with_dict: "{{ users  }}"
+
+- name: Create .bashrc
+  ansible.builtin.file:
+    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bashrc"
+    state: touch
+    mode: '0644'
+  with_dict: "{{ users }}"
+
+- name: Create .bash_profile
+  ansible.builtin.file:
+    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bash_profile"
+    state: touch
+    mode: '0644'
+  with_dict: "{{ users  }}"
+
+- name: Edit .bash_profile file
+  ansible.builtin.blockinfile:
+    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bash_profile"
+    block: |
+      if [ -f $HOME/.bashrc  ]; then
+          . $HOME/.bashrc
+      fi
+  become: yes
+  with_dict: "{{ users  }}"
+
+- name: Edit .bashrc file
+  ansible.builtin.blockinfile:
+    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bashrc"
+    block: |
+      alias rcedit="vim $HOME/.bashrc"
+      alias rcsource="source $HOME/.bashrc"
+      alias c="clear"
+      PS1='\[\e[1;37m\](\h)\[\e[0m\]:\[\e[0;31m\](\u)\[\e[0m\]:\[\e[38;5;208m\]\w\[\e[0m\] \[\e[1;37m\]-> \[\e[0m\]'
+      # Enable color support for ls and other commands
+      if [ -x /usr/bin/dircolors ]; then
+          test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+      fi
+      alias ls='ls --color=auto'
+      alias ll='ls -alF'
+      alias la='ls -A'
+      alias l='ls -CF'
+      alias q="squeue -u $USER"
+      PS1='\[\e[1;37m\](\h)\[\e[0m\]:\[\e[0;31m\](\u)\[\e[0m\]:\[\e[38;5;208m\]\w\[\e[0m\] \[\e[1;37m\]-> \[\e[0m\]'
+      export MODULEPATH=/mnt/nfs/software/modules:$MODULEPATH
+  become: yes
+  with_dict: "{{ users  }}"
+
+- name: Set password for each user
+  ansible.builtin.user:
+    name: "{{ item.key }}"
+    password: "{{ 'changeme' | password_hash('sha512') }}"
+  with_dict: "{{ users }}"
+

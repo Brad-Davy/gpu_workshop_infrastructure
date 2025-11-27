@@ -1,0 +1,24 @@
+---
+- name: Apply necessary roles to all hosts
+  hosts: base
+  become: yes
+  roles:
+    - base
+
+- name: Set up NVIDIA software
+  hosts: gpu
+  become: yes
+  roles:
+    - nvidia
+
+- name: Set NFS server on storage
+  hosts: shared_storage_server
+  become: yes
+  roles:
+    - nfs_server
+
+- name: Set up shared storage
+  hosts: shared_storage_clients
+  become: yes
+  roles:
+    - nfs_client

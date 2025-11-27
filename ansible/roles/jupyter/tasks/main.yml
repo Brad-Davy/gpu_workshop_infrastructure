@@ -1,0 +1,78 @@
+---
+- name: Install Python venv tools
+  apt:
+    name:
+      - python3-venv
+      - python3-pip
+      - nginx
+      - ufw
+    state: present
+  become: yes
+
+- name: Create shared Jupyter virtual environment
+  command: python3 -m venv /opt/jupyter-venv
+  args:
+    creates: /opt/jupyter-venv/bin/activate
+  become: yes
+
+- name: Install JupyterLab in virtual environment
+  command: /opt/jupyter-venv/bin/pip install jupyterlab notebook
+  become: yes
+
+- name: Create Jupyter systemd service for user
+  become: yes
+  ansible.builtin.template:
+    src: jupyter.service.j2
+    dest: "/etc/systemd/system/jupyter-lab.service"
+    mode: '0644'
+
+- name: Enable and start Jupyter services
+  become: yes
+  ansible.builtin.systemd:
+    name: "jupyter-lab.service"
+    enabled: yes
+    state: started
+
+- name: Deploy NGINX config for Jupyter
+  template:
+    src: nginx-jupyter.conf.j2
+    dest: /etc/nginx/sites-available/jupyter.conf
+
+- name: Enable NGINX site
+  file:
+    src: /etc/nginx/sites-available/jupyter.conf
+    dest: /etc/nginx/sites-enabled/jupyter.conf
+    state: link
+    force: yes
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: Disable UFW if present
+  become: yes
+  community.general.ufw:
+    state: disabled
+  ignore_errors: yes
+
+- name: Ensure firewalld is running
+  become: yes
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Open HTTP port
+  become: yes
+  ansible.posix.firewalld:
+    zone: public
+    port: 80/tcp
+    state: enabled
+    immediate: true
+    permanent: true

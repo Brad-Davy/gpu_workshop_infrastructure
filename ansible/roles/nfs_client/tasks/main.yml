@@ -1,0 +1,22 @@
+---
+- name: Install NFS packages
+  ansible.builtin.package:
+    name:
+      - nfs-kernel-server
+      - nfs-common
+      - firewalld
+      - python3-firewall
+    state: present
+
+- name: Ensure mount point exists
+  ansible.builtin.file:
+    path: /mnt/nfs_home
+    state: directory
+
+- name: Mount storage from the storage VM
+  ansible.builtin.mount:
+    path: "{{ shared_storage  }}"
+    src: "workshop-storage:/shared"
+    fstype: nfs
+    state: mounted
+

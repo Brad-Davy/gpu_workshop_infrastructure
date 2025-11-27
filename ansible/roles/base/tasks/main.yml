@@ -1,0 +1,125 @@
+---
+- name: Enable Ubuntu universe repository
+  become: yes
+  ansible.builtin.apt_repository:
+    repo: "deb http://archive.ubuntu.com/ubuntu {{ ansible_distribution_release }} universe"
+    state: present
+
+- name: Update apt cache
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Ensure basic packages are installed
+  become: true
+  ansible.builtin.apt:
+    name:
+      - htop
+      - git
+      - curl
+      - python3-venv
+      - python3
+      - gcc
+    state: present
+
+- name: Create ansible user
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user_name  }}"
+    shell: /bin/bash
+    create_home: yes
+    state: present
+
+- name: Edit .bashrc file
+  become: true
+  ansible.builtin.blockinfile:
+    path: "/home/{{ ansible_user_name  }}/.bashrc"
+    block: |
+      alias rcedit="vim $HOME/.bashrc"
+      alias rcsource="source $HOME/.bashrc"
+      alias c="clear"
+      PS1='\[\e[1;37m\](\h)\[\e[0m\]:\[\e[0;31m\](\u)\[\e[0m\]:\[\e[38;5;208m\]\w\[\e[0m\] \[\e[1;37m\]-> \[\e[0m\]'
+      # Enable color support for ls and other commands
+      if [ -x /usr/bin/dircolors ]; then
+          test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+      fi
+      alias ls='ls --color=auto'
+      alias ll='ls -alF'
+      alias la='ls -A'
+      alias l='ls -CF'
+
+- name: Copy .vimrc file 
+  copy:
+    src: .vimrc
+    dest: "/home/{{ ansible_user_name }}/.vimrc"
+    owner: "{{ ansible_user_name  }}"
+    group: "{{ ansible_user_name  }}"
+    mode: '0600'
+
+- name: Ensure MOTD is set
+  become: true 
+  ansible.builtin.copy:
+    src: motd.txt
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create .ssh directory
+  become: true
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user_name  }}/.ssh"
+    state: directory
+    owner: "{{ ansible_user_name  }}"
+    group: "{{ ansible_user_name  }}"
+    mode: '0700'
+
+- name: Copy my ssh public key to Ansible user
+  ansible.builtin.copy:
+    src: id_ed25519.pub
+    dest: "/home/{{ ansible_user_name  }}/.ssh/authorized_keys"
+    owner: "{{ ansible_user_name  }}"
+    group: "{{ ansible_user_name  }}"
+    mode: '0600'
+  become: yes
+
+- name: Allow passwordless sudo for ansible user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ ansible_user_name }}"
+    content: "{{ ansible_user_name }} ALL=(ALL) NOPASSWD:ALL"
+    owner: root
+    group: root
+    mode: '0440'
+  become: yes
+
+- name: Set hostname for each node
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  become: yes
+
+- name: Ensure SSH allows pubkey authentication on workshop-login node
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    state: present
+    backup: yes
+  become: yes
+  when: inventory_hostname == 'workshop-gpu'
+
+- name: Restart SSH service
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+  become: yes
+
+- name: Ensure host file is update
+  become: true
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: '0644'
+

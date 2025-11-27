@@ -1,0 +1,54 @@
+---
+- name: Ensure export directory exists
+  ansible.builtin.file:
+    path: /shared
+    state: directory
+    owner: root
+    group: root
+    mode: "0777"
+
+- name: Install NFS server utilities
+  ansible.builtin.package:
+    name: 
+      - nfs-kernel-server
+      - firewalld
+      - python3-firewall
+    state: present
+
+- name: Export shared directory via NFS
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    line: "/shared *(rw,sync,no_subtree_check,no_root_squash)"
+    create: yes
+
+- name: Apply export changes
+  command: exportfs -ra
+
+- name: Open NFS-related ports
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: enabled
+  loop:
+    - 111      # rpcbind
+    - 2049     # nfs
+    - 20048    # mountd
+    - 32765    # statd
+    - 32768    # lockd
+
+- name: Also open UDP equivalents
+  ansible.posix.firewalld:
+    port: "{{ item }}/udp"
+    permanent: true
+    state: enabled
+  loop:
+    - 111
+    - 2049
+    - 20048
+    - 32765
+    - 32768
+
+- name: Reload firewalld
+  become: yes
+  command: firewall-cmd --reload
+
