@@ -14,8 +14,9 @@ compose:
   private_ip: private_ip_address
 
 groups:
-  base: "'workshop-gpu' in (tags.Name | default('')) 'workshop-storage' in (tags.Name | default(''))"
+  base: "'workshop-gpu' in (tags.Name | default('')) or 'workshop-storage' in (tags.Name | default(''))"
   gpu: "'workshop-gpu' in (tags.Name | default(''))"
   shared_storage_clients: "'workshop-gpu' in (tags.Name | default(''))"
   shared_storage_server: "'workshop-storage' in (tags.Name | default(''))"
+  jupyter: "'workshop-gpu' in (tags.Name | default(''))"
 

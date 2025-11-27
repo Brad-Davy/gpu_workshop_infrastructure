@@ -1,46 +1,52 @@
 ---
-- name: Create home directory
-  ansible.builtin.file:
-    path: "{{ shared_home_storage }}"
-    state: directory
-    mode: '0777'
-
 - name: Create user and set home directory
   ansible.builtin.user:
-    name: "{{  item.key }}"
-    home: "{{ shared_home_storage  }}/{{ item.key  }}"
+    name: "{{  gpu_user }}"
+    home: "/home/{{ gpu_user }}"
     move_home: yes
     create_home: yes
     shell: /bin/bash
-  with_dict: "{{ users  }}"
+
+- name: Create .tmp directory
+  ansible.builtin.file:
+    path: "/work/.TMP"
+    state: directory
+    owner: "{{ gpu_user }}"
+    group: "{{ gpu_user }}"
+    mode: '0666'
+
+- name: Create .pip-cache directory
+  ansible.builtin.file:
+    path: "/work/.PIP-CACHE"
+    state: directory
+    owner: "{{ gpu_user }}"
+    group: "{{ gpu_user }}"
+    mode: '0666'
 
 - name: Create .bashrc
   ansible.builtin.file:
-    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bashrc"
+    path: "/home/{{ gpu_user }}/.bashrc"
     state: touch
     mode: '0644'
-  with_dict: "{{ users }}"
 
 - name: Create .bash_profile
   ansible.builtin.file:
-    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bash_profile"
+    path: "/home/{{ gpu_user  }}/.bash_profile"
     state: touch
     mode: '0644'
-  with_dict: "{{ users  }}"
 
 - name: Edit .bash_profile file
   ansible.builtin.blockinfile:
-    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bash_profile"
+    path: "/home/{{ gpu_user  }}/.bash_profile"
     block: |
       if [ -f $HOME/.bashrc  ]; then
           . $HOME/.bashrc
       fi
   become: yes
-  with_dict: "{{ users  }}"
 
 - name: Edit .bashrc file
   ansible.builtin.blockinfile:
-    path: "{{ shared_home_storage  }}/{{ item.key  }}/.bashrc"
+    path: "/home/{{ gpu_user  }}/.bashrc"
     block: |
       alias rcedit="vim $HOME/.bashrc"
       alias rcsource="source $HOME/.bashrc"
@@ -56,13 +62,22 @@
       alias l='ls -CF'
       alias q="squeue -u $USER"
       PS1='\[\e[1;37m\](\h)\[\e[0m\]:\[\e[0;31m\](\u)\[\e[0m\]:\[\e[38;5;208m\]\w\[\e[0m\] \[\e[1;37m\]-> \[\e[0m\]'
-      export MODULEPATH=/mnt/nfs/software/modules:$MODULEPATH
+      export TMPDIR=/work/.TMP
+      export PIP_CACHE_DIR=/work/.PIP-CACHE
+      export TMPDIR=/work/tmp
+      export TMP=/work/tmp
+      export TEMP=/work/tmp
+      export PIP_CACHE_DIR=/work/pip-cache
+      export PIP_TMPDIR=/work/tmp
+      export XDG_CACHE_HOME=/work/pip-cache
+      export JOBLIB_TEMP_FOLDER=/work/tmp
+      export JUPYTER_RUNTIME_DIR=/work/tmp
+      export JUPYTER_CONFIG_DIR=/work/tmp
+
   become: yes
-  with_dict: "{{ users  }}"
 
 - name: Set password for each user
   ansible.builtin.user:
-    name: "{{ item.key }}"
+    name: "{{ gpu_user }}"
     password: "{{ 'changeme' | password_hash('sha512') }}"
-  with_dict: "{{ users }}"
 

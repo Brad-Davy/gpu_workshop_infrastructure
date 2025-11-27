@@ -10,13 +10,13 @@
   become: yes
 
 - name: Create shared Jupyter virtual environment
-  command: python3 -m venv /opt/jupyter-venv
+  command: python3 -m venv /work/jupyter-venv
   args:
-    creates: /opt/jupyter-venv/bin/activate
+    creates: /work/jupyter-venv/bin/activate
   become: yes
 
 - name: Install JupyterLab in virtual environment
-  command: /opt/jupyter-venv/bin/pip install jupyterlab notebook
+  command: /work/jupyter-venv/bin/pip install jupyterlab notebook
   become: yes
 
 - name: Create Jupyter systemd service for user

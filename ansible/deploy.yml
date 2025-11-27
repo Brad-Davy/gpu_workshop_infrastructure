@@ -4,6 +4,8 @@
   become: yes
   roles:
     - base
+    - users
+    - storage
 
 - name: Set up NVIDIA software
   hosts: gpu
@@ -22,3 +24,9 @@
   become: yes
   roles:
     - nfs_client
+
+- name: Set up Jupyter notebook
+  hosts: jupyter
+  become: yes 
+  roles:
+    - jupyter

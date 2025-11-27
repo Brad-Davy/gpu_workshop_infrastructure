@@ -98,7 +98,7 @@
     name: "{{ inventory_hostname }}"
   become: yes
 
-- name: Ensure SSH allows pubkey authentication on workshop-login node
+- name: Ensure SSH allows pubkey authentication on workshop-gpu node
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PubkeyAuthentication'
@@ -123,3 +123,36 @@
     group: root
     mode: '0644'
 
+- name: Ensure SSH allows password authentication on workshop-login node
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication yes'
+    state: present
+    backup: yes
+  become: yes
+  when: inventory_hostname == 'workshop-gpu'
+
+- name: Comment out PasswordAuthentication no in clouding SSH config
+  ansible.builtin.replace:
+    path: /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+    regexp: '^PasswordAuthentication no'
+    replace: '#PasswordAuthentication no'
+  become: yes
+  when: inventory_hostname == 'workshop-gpu'
+
+- name: Ensure SSH allows pubkey authentication on workshop-login node
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    state: present
+    backup: yes
+  become: yes
+  when: inventory_hostname == 'workshop-gpu'
+
+- name: Restart SSH service
+  ansible.builtin.service:
+    name: ssh
+    state: restarted
+  become: yes

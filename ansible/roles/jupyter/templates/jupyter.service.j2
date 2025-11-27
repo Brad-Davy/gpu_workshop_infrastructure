@@ -1,26 +1,27 @@
+[Install]
+WantedBy=multi-user.target
+
 [Unit]
-Description=Jupyter Notebook server 
+Description=Jupyter Lab Server
 After=network.target
 
 [Service]
 Type=simple
-User={{ item.key }}
-WorkingDirectory={{ shared_home_storage  }}/{{ item.key }}
+User={{ gpu_user }}
+WorkingDirectory=/home/{{ gpu_user }}
 
-ExecStart=/opt/jupyter-venv/bin/jupyter notebook \
-  --NotebookApp.port={{ item.value }} \
-  --NotebookApp.ip=0.0.0.0 \
-  --NotebookApp.base_url=/{{ item.key }}/ \
-  --NotebookApp.notebook_dir={{ shared_home_storage }}/{{ item.key }} \
-  --NotebookApp.allow_origin='*' \
-  --NotebookApp.allow_root=False \
-  --NotebookApp.token='' \
-  --NotebookApp.password='' \
+ExecStart=/opt/jupyter-venv/bin/jupyter lab \
+  --ServerApp.port=8888 \
+  --ServerApp.ip=0.0.0.0 \
+  --ServerApp.root_dir=/home/{{ gpu_user }} \
+  --ServerApp.token='' \
+  --ServerApp.password='' \
+  --ServerApp.allow_origin='*' \
+  --ServerApp.disable_check_xsrf=True \
+  --ServerApp.allow_remote_access=True
 
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
-
-

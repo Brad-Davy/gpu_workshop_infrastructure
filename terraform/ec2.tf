@@ -32,6 +32,14 @@ resource "aws_key_pair" "mykey" {
 resource "aws_security_group" "ssh" {
 
   ingress {
+    description = "Allow all inbound from same SG (internal comms)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+
+  ingress {
     description = "SSH from my any IP"
     from_port   = 22
     to_port     = 22
