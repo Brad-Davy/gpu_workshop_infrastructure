@@ -10,7 +10,7 @@ Type=simple
 User={{ gpu_user }}
 WorkingDirectory=/home/{{ gpu_user }}
 
-ExecStart=/opt/jupyter-venv/bin/jupyter lab \
+ExecStart=/work/jupyter-venv/bin/jupyter lab \
   --ServerApp.port=8888 \
   --ServerApp.ip=0.0.0.0 \
   --ServerApp.root_dir=/home/{{ gpu_user }} \

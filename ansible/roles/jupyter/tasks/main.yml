@@ -19,6 +19,10 @@
   command: /work/jupyter-venv/bin/pip install jupyterlab notebook
   become: yes
 
+- name: Install numpy and matplotlib in virtual environment
+  command: /work/jupyter-venv/bin/pip install numpy matplotlib ipywidgets tqdm
+  become: yes
+
 - name: Create Jupyter systemd service for user
   become: yes
   ansible.builtin.template:

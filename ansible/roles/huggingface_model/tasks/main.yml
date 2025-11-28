@@ -1,0 +1,43 @@
+---
+- name: Create application directory
+  file:
+    path: "{{ model_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create models directory
+  file:
+    path: "{{ local_model_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install PyTorch with CUDA wheels in venv
+  command: "/work/jupyter-venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cu121"
+  args:
+    chdir: "{{ model_dir }}"
+
+- name: Install Transformers and friends in venv
+  command: >
+    /work/jupyter-venv/bin/pip install
+    transformers accelerate bitsandbytes sentencepiece huggingface_hub
+  args:
+    chdir: "{{ model_dir }}"
+
+- name: Deploy model download script from template
+  template:
+    src: download_model.py.j2
+    dest: "{{ model_dir }}/download_model.py"
+    mode: "0755"
+
+- name: Download Llama 3 8B model using script
+  command: "/work/jupyter-venv/bin/python {{ model_dir }}/download_model.py"
+  args:
+    chdir: "{{ model_dir }}"
+  environment:
+    HUGGINGFACE_HUB_TOKEN: "{{ hf_token }}"
+    MODEL_NAME: "{{ model_name }}"
+    LOCAL_MODEL_DIR: "{{ local_model_dir }}"

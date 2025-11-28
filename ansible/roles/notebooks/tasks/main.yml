@@ -1,0 +1,24 @@
+---
+- name: Create Notebook directory
+  ansible.builtin.file:
+    path: /shared/workbooks
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure jupyter notebooks are present
+  ansible.builtin.template:
+    src: chat_bot.ipynb.j2
+    dest: /shared/workbooks/llm.ipynb
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure jupyter notebooks are present
+  ansible.builtin.template:
+    src: rag.ipynb.j2
+    dest: /shared/workbooks/rag.ipynb
+    owner: root
+    group: root
+    mode: '0644'

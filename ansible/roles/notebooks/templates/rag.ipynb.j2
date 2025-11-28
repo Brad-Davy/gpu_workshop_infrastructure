@@ -1,0 +1,246 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 🔎 RAG + Mistral Model Notebook\n",
+    "\n",
+    "This notebook loads a local Mistral model and uses FAISS-based\n",
+    "retrieval to improve answer accuracy using your own knowledge base."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 1️⃣ Install & Import Dependencies"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "!pip install -q faiss-cpu sentence-transformers\n",
+    "from transformers import AutoTokenizer, AutoModelForCausalLM\n",
+    "from sentence_transformers import SentenceTransformer\n",
+    "import torch\n",
+    "import faiss\n",
+    "import numpy as np\n",
+    "print(\"✔ Libraries loaded\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2️⃣ GPU Check"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(\"CUDA available:\", torch.cuda.is_available())\n",
+    "if torch.cuda.is_available():\n",
+    "    print(\"GPU:\", torch.cuda.get_device_name(0))\n",
+    "else:\n",
+    "    print(\"⚠ Running on CPU — slow!\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 3️⃣ Load Local Mistral Model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "model_path = \"/opt/llm/models/Mistral-7B-Instruct/\"\n",
+    "print(f\"📁 Loading model from: {model_path}\")\n",
+    "\n",
+    "tokenizer = AutoTokenizer.from_pretrained(model_path)\n",
+    "tokenizer.pad_token = tokenizer.eos_token\n",
+    "\n",
+    "model = AutoModelForCausalLM.from_pretrained(\n",
+    "    model_path,\n",
+    "    torch_dtype=torch.float16,\n",
+    "    device_map=\"auto\"\n",
+    ")\n",
+    "print(\"🚀 Model loaded!\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 4️⃣ Create Local Knowledge Base (documents for RAG)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "docs = [\n",
+    "    \"Artificial Intelligence helps computers learn and make decisions like humans.\",\n",
+    "    \"NVIDIA L40S is a powerful GPU made for AI inference and 3D workloads.\",\n",
+    "    \"A CPU executes instructions from software using its ALU and control unit.\",\n",
+    "    \"AWS g6e instances provide L40S GPUs with high performance for LLMs.\",\n",
+    "]\n",
+    "print(\"📚 Documents in knowledge base:\", len(docs))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 5️⃣ Build FAISS Vector Index"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "embedder = SentenceTransformer(\"all-MiniLM-L6-v2\")\n",
+    "doc_embeddings = embedder.encode(docs)\n",
+    "index = faiss.IndexFlatL2(doc_embeddings.shape[1])\n",
+    "index.add(np.array(doc_embeddings))\n",
+    "print(\"🔎 Vector index ready!\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 6️⃣ Retrieval Function (RAG step)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def get_context(query, k=2):\n",
+    "    query_emb = embedder.encode([query])\n",
+    "    _, idxs = index.search(np.array(query_emb), k)\n",
+    "    return \"\\n\".join([docs[i] for i in idxs[0]])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 7️⃣ Ask Question + Retrieve Relevant Context"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "query = input(\"Ask a question: \")\n",
+    "context = get_context(query)\n",
+    "print(\"\\n📌 Retrieved context for model:\")\n",
+    "print(context)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 8️⃣ Build Prompt for Mistral with Context"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "rag_prompt = f\"\"\"\n",
+    "<s>[INST]\n",
+    "Use the provided context to answer the question.\n",
+    "\n",
+    "Context:\n",
+    "{context}\n",
+    "\n",
+    "Question:\n",
+    "{query}\n",
+    "\n",
+    "Give a clear and accurate answer.\n",
+    "[/INST]\"\"\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 9️⃣ Tokenize & Move Model Input to GPU"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "inputs = tokenizer(rag_prompt, return_tensors=\"pt\")\n",
+    "if torch.cuda.is_available():\n",
+    "    inputs = {k: v.to(\"cuda\") for k, v in inputs.items()}\n",
+    "print(\"Tokens prepared ✔\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 🔟 Generate RAG-Enhanced Answer"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "output = model.generate(**inputs, max_new_tokens=200)\n",
+    "decoded = tokenizer.decode(output[0], skip_special_tokens=True)\n",
+    "\n",
+    "if \"[/INST]\" in decoded:\n",
+    "    decoded = decoded.split(\"[/INST]\", 1)[1].strip()\n",
+    "\n",
+    "print(\"\\n🤖 Model Response:\")\n",
+    "print(decoded)"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python",
+   "version": "3.12"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
+

@@ -18,6 +18,7 @@
   become: yes
   roles:
     - nfs_server
+    - notebooks
 
 - name: Set up shared storage
   hosts: shared_storage_clients
@@ -30,3 +31,4 @@
   become: yes 
   roles:
     - jupyter
+    - huggingface_model

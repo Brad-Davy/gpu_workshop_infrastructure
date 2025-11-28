@@ -1,41 +1,9 @@
 ---
-- name: Detect NVMe instance-store (not 8GB root disk)
-  shell: "lsblk -dn -o NAME,TYPE,SIZE | awk '$2 == \"disk\" && $3 != \"8G\" {print $1}'"
-  register: nvme_device_output
-  changed_when: false
-
-- name: Set device fact
-  set_fact:
-    nvme_device: "/dev/{{ nvme_device_output.stdout }}"
-
-- name: Create filesystem (idempotent)
-  ansible.builtin.filesystem:
-    fstype: xfs
-    dev: "{{ nvme_device }}"
-
 - name: Create shared mount directory
   file:
     path: /shared
     state: directory
     mode: "0777"
-  when: inventory_hostname == "workshop-storage"
-
-- name: Mount NVMe to /shared
-  mount:
-    src: "{{ nvme_device }}"
-    path: /shared
-    fstype: xfs
-    opts: defaults,nofail
-    state: mounted
-  when: inventory_hostname == "workshop-storage"
-
-- name: Persist mount in fstab
-  mount:
-    src: "{{ nvme_device }}"
-    path: /shared
-    fstype: xfs
-    opts: defaults,nofail
-    state: present
   when: inventory_hostname == "workshop-storage"
 
 - name: Create work directory
@@ -46,30 +14,4 @@
     group: "{{ gpu_user }}"
     mode: "0777"
   when: inventory_hostname == "workshop-gpu"
-
-- name: Mount NVMe to /work
-  mount:
-    src: "{{ nvme_device }}"
-    path: /work
-    fstype: xfs
-    opts: defaults,nofail
-    state: mounted
-  when: inventory_hostname == "workshop-gpu"
-
-- name: Persist mount in fstab
-  mount:
-    src: "{{ nvme_device }}"
-    path: /work
-    fstype: xfs
-    opts: defaults,nofail
-    state: present
-  when: inventory_hostname == "workshop-gpu"
-
-- name: Ensure /work/tmp exists
-  file:
-    path: /work/.tmp
-    state: directory
-    mode: "1777"
-  when: inventory_hostname == "workshop-gpu"
-
 

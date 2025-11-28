@@ -21,29 +21,9 @@ shared_storage: /mnt/nfs/
 shared_home_storage: /mnt/nfs/home
 
 #################################################################
-## Software
+## Hugging Face Models
 #################################################################
-shared_software_path: /mnt/nfs/software
-shared_software_user: user_software
-python_version: 3.14
-apptainer_version: 1.4.3
-openmpi_version: 5.0.9
-hpl_version: 2.3
-openblas_version: 0.3.30
-
-###### url's are required if we do a non git installation #######
-
-openmpi_url: https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.9.tar.gz
-hpl_url: https://netlib.org/benchmark/hpl/hpl-2.3.tar.gz
-
-#################################################################
-## Monitoring
-#################################################################
-monitoring_user: monitoring
-monitoring_repo: https://github.com/Brad-Davy/slurm_comunicator.git
-
-#################################################################
-## HPL testing
-#################################################################
-hpl_user: hpl
-hpl_repo: https://github.com/Brad-Davy/hpc_hpl_tests.git
+model_dir: /opt/llm
+model_name: "mistralai/Mistral-7B-Instruct-v0.1"
+local_model_dir: "/opt/llm/models/Mistral-7B-Instruct"
+hf_token: "{{ lookup('env', 'HF_TOKEN') }}"

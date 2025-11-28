@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+import os
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+# These can come from env or fall back to Ansible-injected defaults
+model_name = os.environ.get("MODEL_NAME", "{{ model_name }}")
+local_dir = os.environ.get("LOCAL_MODEL_DIR", "{{ local_model_dir }}")
+token = os.environ.get("HUGGINGFACE_HUB_TOKEN")
+
+if token is None:
+    raise RuntimeError("HUGGINGFACE_HUB_TOKEN environment variable not set")
+
+print(f"Downloading model: {model_name}")
+print(f"Saving to: {local_dir}")
+
+os.makedirs(local_dir, exist_ok=True)
+
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
+tokenizer.save_pretrained(local_dir)
+print("Tokenizer downloaded and saved.")
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    token=token,
+    torch_dtype=torch.float16,
+    device_map="auto",
+)
+model.save_pretrained(local_dir)
+print("Model downloaded and saved.")
+
